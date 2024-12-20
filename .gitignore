@@ -1,6 +1,7 @@
 # Вихідна директорія для збірки
 /build/
 /out/
+/_deps/
 
 # Файли конфігурації CMake
 CMakeCache.txt
