@@ -1,0 +1,49 @@
+# Вихідна директорія для збірки
+/build/
+/out/
+
+# Файли конфігурації CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Лог-файли та тимчасові файли
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.sln
+*.user
+*.VC.db
+*.VC.opendb
+
+# Бінарні файли
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+*.o
+*.obj
+*.pdb
+
+# Vulkan SDK конфігурація
+.vulkan_sdk
+
+# Системні файли
+.DS_Store
+Thumbs.db
+
+# Інші тимчасові або кешовані файли
+.idea/
+.vscode/
+*.iml
+*.class
+*.pyc
+__pycache__/
+
+# Сторонні бібліотеки, якщо завантажуються через submodules
+/external/
