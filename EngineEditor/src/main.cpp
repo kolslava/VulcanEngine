@@ -4,15 +4,17 @@
 class EngineEditor : public EngineCore::Engine {
 protected:
     void renderImGui() override {
-        // Custom ImGui rendering can be implemented here.
+        ImGui::Begin("Hello, Vulkan!");
+        ImGui::Text("Welcome to the Vulkan ImGui demo!");
+        ImGui::End();
     }
 };
 
 int main() {
     try {
-        std::unique_ptr<EngineEditor> app = std::make_unique<EngineEditor>();
-        app->Initialize();
-        app->Run();
+        EngineEditor app;
+        app.Initialize();
+        app.Run();
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
