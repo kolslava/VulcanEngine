@@ -1,18 +1,18 @@
 // main.cpp
-#include "EngineCore/Engine.hpp"
+#include <EngineCore/Engine.hpp>
 
-class EngineEditor : public Engine {
+class EngineEditor : public EngineCore::Engine {
 protected:
     void renderImGui() override {
-        ImGui::ShowDemoWindow();
+        // Custom ImGui rendering can be implemented here.
     }
 };
 
 int main() {
     try {
         std::unique_ptr<EngineEditor> app = std::make_unique<EngineEditor>();
-        app->initialize();
-        app->run();
+        app->Initialize();
+        app->Run();
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

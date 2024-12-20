@@ -2,48 +2,36 @@
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
-#include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
-
-#include <stdexcept>
 #include <iostream>
 #include <memory>
+#include <GLFW/glfw3.h>
+#include <vulkan/vulkan.h>
 
-#include <vector>
+namespace EngineCore {
 
-class Engine {
-public:
-    Engine();
-    virtual ~Engine();
+    class Engine {
+    public:
+        Engine();
+        virtual ~Engine();
 
-    void initialize();
-    void run();
-    void cleanup();
+        void Initialize();
+        void Run();
+        void Cleanup();
 
-protected:
-    virtual void renderImGui();
+    protected:
+        virtual void renderImGui();
 
-private:
-    void initWindow();
-    void initVulkan();
-    void mainLoop();
+    private:
+        void initWindow();
+        void CreateInstance();
+        void initVulkan();
+        void mainLoop();
 
-    VkCommandBuffer beginSingleTimeCommands();
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+    private:
+        GLFWwindow* m_window;
+        VkInstance instance;
+    };
 
-    GLFWwindow* window;
-    VkInstance instance;
-    VkCommandPool commandPool; // You need to initialize this in initVulkan()
-    VkQueue graphicsQueue;    // You need to initialize this in initVulkan()
-    
-    VkPhysicalDevice physicalDevice;
-    VkDevice device;
-    VkDescriptorPool descriptorPool;
-
-    VkRenderPass renderPass;
-};
+}
 
 #endif // ENGINE_HPP
