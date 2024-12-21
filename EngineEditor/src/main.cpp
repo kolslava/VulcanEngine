@@ -1,25 +1,20 @@
 // main.cpp
-#include <EngineCore/Engine.hpp>
 
-class EngineEditor : public EngineCore::Engine {
-protected:
-    void renderImGui() override {
-        ImGui::Begin("Hello, Vulkan!");
-        ImGui::Text("Welcome to the Vulkan ImGui demo!");
-        ImGui::End();
-    }
+#include <iostream>
+#include <memory>
+#include <imgui/imgui.h>
+
+#include <EngineCore/Application.hpp>
+
+class EngineEditor : public EngineCore::Application {
+
 };
 
 int main() {
-    try {
-        EngineEditor app;
-        app.Initialize();
-        app.Run();
-    }
-    catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
 
-    return EXIT_SUCCESS;
+	auto pEngineEditorApp = std::make_unique<EngineEditor>();
+
+	std::cin.get();
+
+	return 0;
 }

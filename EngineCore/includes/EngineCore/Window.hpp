@@ -1,4 +1,4 @@
-
+/*
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
@@ -82,3 +82,4 @@ namespace EngineCore {
 }
 
 #endif // ENGINE_HPP
+*/

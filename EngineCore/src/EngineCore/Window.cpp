@@ -1,4 +1,4 @@
-#include <EngineCore/Engine.hpp>
+/*#include <EngineCore/Engine.hpp>
 
 namespace EngineCore {
 
@@ -485,4 +485,4 @@ namespace EngineCore {
         }
     }
 
-}
+}*/
