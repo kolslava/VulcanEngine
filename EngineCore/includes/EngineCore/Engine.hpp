@@ -1,3 +1,4 @@
+
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
 
@@ -36,7 +37,12 @@ namespace EngineCore {
         void createDescriptorPool();
         void createCommandPool();
         void createCommandBuffer();
+        void createFramebuffers();
         void createRenderPass();
+
+        void createSwapChain();
+        bool isDeviceSuitable(VkPhysicalDevice);
+
         void initVulkan();
         void initImGui();
         void cleanupImGui();
@@ -57,6 +63,20 @@ namespace EngineCore {
         VkCommandPool commandPool;
         VkCommandBuffer commandBuffer;
         VkDescriptorPool imguiDescriptorPool;
+
+        std::vector<VkFramebuffer> swapChainFramebuffers;
+        std::vector<VkImageView> swapChainImageViews;
+        VkExtent2D swapChainExtent;
+        VkSwapchainKHR swapChain;
+
+        uint32_t graphicsQueueFamilyIndex;
+        uint32_t presentQueueFamilyIndex;
+
+        VkQueue presentQueue;  // Черга для презентацій
+        std::vector<VkImage> swapChainImages;          // Список зображень у SwapChain
+
+        uint32_t currentFrame = 0;  // Індекс поточного кадру
+        const int MAX_FRAMES_IN_FLIGHT = 2;
     };
 
 }

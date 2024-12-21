@@ -23,20 +23,18 @@ namespace EngineCore {
     }
 
     void Engine::Cleanup() {
-        cleanupImGui();
-
-        if (renderPass != VK_NULL_HANDLE) {
-            vkDestroyRenderPass(device, renderPass, nullptr);
-        }
-        if (device != VK_NULL_HANDLE) {
-            vkDestroyDevice(device, nullptr);
-        }
         if (surface != VK_NULL_HANDLE) {
             vkDestroySurfaceKHR(instance, surface, nullptr);
         }
+
+        if (device != VK_NULL_HANDLE) {
+            vkDestroyDevice(device, nullptr);
+        }
+
         if (instance != VK_NULL_HANDLE) {
             vkDestroyInstance(instance, nullptr);
         }
+
         if (m_window) {
             glfwDestroyWindow(m_window);
             glfwTerminate();
@@ -45,10 +43,11 @@ namespace EngineCore {
 
 
     void Engine::renderImGui() {
-        ImGui::NewFrame();
-        ImGui::ShowDemoWindow();
-        ImGui::Render();
+        ImGui::Begin("Hello, Vulkan!");
+        ImGui::Text("Welcome to the Vulkan ImGui demo!");
+        ImGui::End();
     }
+
 
     void Engine::initWindow() {
         if (!glfwInit()) {
@@ -66,11 +65,11 @@ namespace EngineCore {
     void Engine::CreateInstance() {
         VkApplicationInfo appInfo = {};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "Vulkan";
+        appInfo.pApplicationName = "Vulkan Application";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.pEngineName = "Super Engine";
+        appInfo.pEngineName = "Engine";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_3;
+        appInfo.apiVersion = VK_API_VERSION_1_0;
 
         uint32_t glfwExtensionCount = 0;
         const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -83,6 +82,11 @@ namespace EngineCore {
 
         if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create Vulkan instance!");
+        }
+
+        // Створення поверхні
+        if (glfwCreateWindowSurface(instance, m_window, nullptr, &surface) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create window surface!");
         }
     }
 
@@ -98,49 +102,106 @@ namespace EngineCore {
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
         for (const auto& device : devices) {
-            // Обираємо перший пристрій із графічною чергою
-            uint32_t queueFamilyCount = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-            std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-            vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-            for (uint32_t i = 0; i < queueFamilyCount; i++) {
-                if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-                    physicalDevice = device;
-                    return;
-                }
+            if (isDeviceSuitable(device)) {
+                physicalDevice = device;
+                break;
             }
         }
 
-        throw std::runtime_error("Failed to find a suitable GPU!");
+        if (physicalDevice == VK_NULL_HANDLE) {
+            throw std::runtime_error("Failed to find a suitable GPU!");
+        }
     }
 
+    bool Engine::isDeviceSuitable(VkPhysicalDevice device) {
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+        bool graphicsQueueFound = false;
+        bool presentQueueFound = false;
+
+        for (uint32_t i = 0; i < queueFamilyCount; i++) {
+            // Перевірка графічної черги
+            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                graphicsQueueFamilyIndex = i;
+                graphicsQueueFound = true;
+            }
+
+            // Перевірка презентаційної черги
+            VkBool32 presentSupport = false;
+
+            if (surface != VK_NULL_HANDLE) { // Перевіряємо, чи surface створена
+                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+            }
+            else {
+                throw std::runtime_error("Surface is not initialized before calling vkGetPhysicalDeviceSurfaceSupportKHR!");
+            }
+
+            if (presentSupport) {
+                presentQueueFamilyIndex = i;
+                presentQueueFound = true;
+            }
+
+            // Завершити пошук, якщо обидві черги знайдено
+            if (graphicsQueueFound && presentQueueFound) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     void Engine::createLogicalDevice() {
-        VkDeviceQueueCreateInfo queueCreateInfo = {};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = 0; // Replace with proper queue family index
-        queueCreateInfo.queueCount = 1;
+        if (physicalDevice == VK_NULL_HANDLE) {
+            throw std::runtime_error("Physical device is not selected before creating logical device!");
+        }
 
         float queuePriority = 1.0f;
-        queueCreateInfo.pQueuePriorities = &queuePriority;
+
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+        // Графічна черга
+        VkDeviceQueueCreateInfo graphicsQueueCreateInfo = {};
+        graphicsQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        graphicsQueueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
+        graphicsQueueCreateInfo.queueCount = 1;
+        graphicsQueueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(graphicsQueueCreateInfo);
+
+        // Презентаційна черга (якщо відрізняється від графічної)
+        if (graphicsQueueFamilyIndex != presentQueueFamilyIndex) {
+            VkDeviceQueueCreateInfo presentQueueCreateInfo = {};
+            presentQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            presentQueueCreateInfo.queueFamilyIndex = presentQueueFamilyIndex;
+            presentQueueCreateInfo.queueCount = 1;
+            presentQueueCreateInfo.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(presentQueueCreateInfo);
+        }
+
+        // Розширення для SwapChain
+        const char* deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.queueCreateInfoCount = 1;
-        createInfo.pQueueCreateInfos = &queueCreateInfo;
+        createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+        createInfo.pQueueCreateInfos = queueCreateInfos.data();
+        createInfo.enabledExtensionCount = 1;
+        createInfo.ppEnabledExtensionNames = deviceExtensions;
 
         if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create logical device!");
         }
 
-        vkGetDeviceQueue(device, 0, 0, &graphicsQueue);
+        // Отримання черг
+        vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
+        vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue);
     }
 
     void Engine::createDescriptorPool() {
-        VkDescriptorPoolSize pool_sizes[] = {
+        VkDescriptorPoolSize poolSizes[] = {
             { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
             { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
             { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
@@ -154,14 +215,14 @@ namespace EngineCore {
             { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
         };
 
-        VkDescriptorPoolCreateInfo pool_info = {};
-        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
-        pool_info.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(pool_sizes));
-        pool_info.pPoolSizes = pool_sizes;
+        VkDescriptorPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        poolInfo.maxSets = 1000 * static_cast<uint32_t>(std::size(poolSizes));
+        poolInfo.poolSizeCount = static_cast<uint32_t>(std::size(poolSizes));
+        poolInfo.pPoolSizes = poolSizes;
 
-        if (vkCreateDescriptorPool(device, &pool_info, nullptr, &imguiDescriptorPool) != VK_SUCCESS) {
+        if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &imguiDescriptorPool) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create descriptor pool!");
         }
     }
@@ -227,13 +288,13 @@ namespace EngineCore {
 
     void Engine::createRenderPass() {
         VkAttachmentDescription colorAttachment = {};
-        colorAttachment.format = VK_FORMAT_B8G8R8A8_SRGB; // Формат поверхні
+        colorAttachment.format = VK_FORMAT_B8G8R8A8_SRGB; // Формат кольору
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
         colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // Очищення перед рендерингом
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // Збереження результату
         colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // Початковий стан
+        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // Для презентації
 
         VkAttachmentReference colorAttachmentRef = {};
@@ -267,16 +328,38 @@ namespace EngineCore {
         }
     }
 
+    void Engine::createFramebuffers() {
+        swapChainFramebuffers.resize(swapChainImageViews.size());
+
+        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+            VkImageView attachments[] = { swapChainImageViews[i] };
+
+            VkFramebufferCreateInfo framebufferInfo = {};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = renderPass;
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.width = swapChainExtent.width;
+            framebufferInfo.height = swapChainExtent.height;
+            framebufferInfo.layers = 1;
+
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
+                throw std::runtime_error("Failed to create framebuffer!");
+            }
+        }
+    }
 
     void Engine::initVulkan() {
         CreateInstance();
         pickPhysicalDevice();
         createLogicalDevice();
-        createDescriptorPool();
+        createSwapChain();
         createRenderPass();
+        createFramebuffers(); // Виклик після створення RenderPass
         createCommandPool();
         createCommandBuffer();
     }
+
 
     void Engine::initImGui() {
         IMGUI_CHECKVERSION();
@@ -290,14 +373,31 @@ namespace EngineCore {
         init_info.Device = device;
         init_info.Queue = graphicsQueue;
         init_info.DescriptorPool = imguiDescriptorPool;
-        init_info.MinImageCount = 2;
-        init_info.ImageCount = 2;
+        init_info.MinImageCount = static_cast<uint32_t>(swapChainImages.size()); // Відповідає кількості зображень у SwapChain
+        init_info.ImageCount = static_cast<uint32_t>(swapChainImages.size());
         init_info.PipelineCache = VK_NULL_HANDLE;
         init_info.Allocator = nullptr;
 
         ImGui_ImplVulkan_Init(&init_info, renderPass);
 
-        // Завантаження шрифтів
+        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+        endSingleTimeCommands(commandBuffer);
+        ImGui_ImplVulkan_DestroyFontUploadObjects();
+    }
+
+    VkCommandBuffer Engine::beginSingleTimeCommands() {
+        VkCommandBufferAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to allocate command buffer!");
+        }
+
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -306,10 +406,12 @@ namespace EngineCore {
             throw std::runtime_error("Failed to begin recording command buffer!");
         }
 
-        ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+        return commandBuffer;
+    }
 
+    void Engine::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to record command buffer!");
+            throw std::runtime_error("Failed to end command buffer!");
         }
 
         VkSubmitInfo submitInfo = {};
@@ -322,54 +424,19 @@ namespace EngineCore {
         }
 
         vkQueueWaitIdle(graphicsQueue);
-        ImGui_ImplVulkan_DestroyFontUploadObjects();
-    }
-
-    VkCommandBuffer Engine::beginSingleTimeCommands() {
-        VkCommandBufferAllocateInfo allocInfo = {};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-        return commandBuffer;
-    }
-
-    void Engine::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo = {};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
-
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
+
 
     void Engine::cleanupImGui() {
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
 
-        if (commandPool != VK_NULL_HANDLE) {
-            vkDestroyCommandPool(device, commandPool, nullptr);
-        }
         if (imguiDescriptorPool != VK_NULL_HANDLE) {
             vkDestroyDescriptorPool(device, imguiDescriptorPool, nullptr);
         }
     }
-
 
     void Engine::mainLoop() {
         while (!glfwWindowShouldClose(m_window)) {
@@ -386,10 +453,35 @@ namespace EngineCore {
             // Завершення кадру ImGui
             ImGui::Render();
 
-            // Рендеринг DrawData
+            // Виконання рендер-проходу
             VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
+            VkClearValue clearColor = { {{0.1f, 0.1f, 0.1f, 1.0f}} };
+
+            VkRenderPassBeginInfo renderPassInfo = {};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = renderPass;
+            renderPassInfo.framebuffer = swapChainFramebuffers[currentFrame];
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.renderArea.extent = swapChainExtent;
+            renderPassInfo.clearValueCount = 1;
+            renderPassInfo.pClearValues = &clearColor;
+
+            vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+            // Рендеринг ImGui
+            if (ImGui::GetDrawData() != nullptr) {
+                ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+            }
+            else {
+                throw std::runtime_error("ImGui::GetDrawData returned nullptr!");
+            }
+
+            vkCmdEndRenderPass(commandBuffer);
             endSingleTimeCommands(commandBuffer);
+
+            // Оновлення поточного кадру
+            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
     }
 
