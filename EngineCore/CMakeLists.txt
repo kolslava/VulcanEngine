@@ -39,6 +39,7 @@ target_link_libraries(${ENGINE_PROJECT_NAME} PRIVATE glfw)
 
 # Vulkan
 find_package(Vulkan REQUIRED)
+target_include_directories(${ENGINE_PROJECT_NAME} PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(${ENGINE_PROJECT_NAME} PRIVATE Vulkan::Vulkan)
 
 # glm
