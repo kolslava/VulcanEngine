@@ -1,24 +1,24 @@
-// main.cpp
-
-#include <iostream>
-#include <memory>
-#include <imgui/imgui.h>
 
 #include <EngineCore/Application.hpp>
 
+#include <iostream>
+#include <string>
+#include <memory>
+
 class EngineEditor : public EngineCore::Application {
+private:
+
+
+public:
+
 
 };
 
-int main() {
-    try {
-        auto app = std::make_unique<EngineEditor>();
-        app->run();
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
+int main(int argc, char* argv[]) {
 
-    return EXIT_SUCCESS;
+	auto pApp = std::make_unique<EngineEditor>();
+
+	pApp->Run();
+
+	return 0;
 }

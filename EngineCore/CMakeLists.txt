@@ -4,15 +4,24 @@ set(ENGINE_PROJECT_NAME EngineCore)
 
 set(ENGINE_PUBLIC_INCLUDES
     includes/EngineCore/Application.hpp
+    includes/EngineCore/Logger.hpp
 )
 
 set(ENGINE_PRIVATE_INCLUDES
     includes/EngineCore/Window.hpp
+    includes/EngineCore/EventManager.hpp
+    includes/EngineCore/VulkanRender.hpp
+    includes/EngineCore/ResourceManager.hpp
+    includes/EngineCore/MathUtils.hpp
+    includes/EngineCore/Timer.hpp
 )
 
 set(ENGINE_PRIVATE_SOURCES
     src/EngineCore/Application.cpp
     src/EngineCore/Window.cpp
+    src/EngineCore/EventManager.cpp
+    src/EngineCore/VulkanRender.cpp
+    src/EngineCore/ResourceManager.cpp
 )
 
 set(ENGINE_ALL_SOURCES
@@ -41,6 +50,10 @@ target_link_libraries(${ENGINE_PROJECT_NAME} PRIVATE glfw)
 find_package(Vulkan REQUIRED)
 target_include_directories(${ENGINE_PROJECT_NAME} PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(${ENGINE_PROJECT_NAME} PRIVATE Vulkan::Vulkan)
+
+# Spdlog
+add_subdirectory(../external/spdlog ${CMAKE_CURRENT_BINARY_DIR}/spdlog)
+target_link_libraries(${ENGINE_PROJECT_NAME} PRIVATE spdlog)
 
 # glm
 add_subdirectory(../external/glm ${CMAKE_CURRENT_BINARY_DIR}/glm)
