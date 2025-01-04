@@ -1,4 +1,3 @@
-
 #include <EngineCore/Application.hpp>
 
 #include <iostream>
@@ -6,19 +5,26 @@
 #include <memory>
 
 class EngineEditor : public EngineCore::Application {
-private:
-
 
 public:
+	EngineEditor() {
+		
+	}
+	~EngineEditor() {
 
-
+	}
+	void OnImGuiRender() override {
+		//std::cout << "EngineEditor::OnImGuiRender()" << std::endl;
+	}
 };
 
 int main(int argc, char* argv[]) {
+	
+	auto pEditorApp = std::make_unique<EngineEditor>();
+	pEditorApp->Run();
 
-	auto pApp = std::make_unique<EngineEditor>();
-
-	pApp->Run();
-
+	//std::cout << "Hello, World!" << std::endl;
+	//std::cin.get();
+	
 	return 0;
 }
